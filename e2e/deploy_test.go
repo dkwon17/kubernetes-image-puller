@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path"
 	"time"
@@ -33,11 +34,11 @@ func setup(t *testing.T) *kubernetes.Clientset {
 		t.Errorf("Error creating rest config: %v", err)
 	}
 	c := kubernetes.NewForConfigOrDie(config)
-	_, err = c.CoreV1().Namespaces().Create(&corev1.Namespace{
+	_, err = c.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "k8s-image-puller",
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		t.Errorf("Error creating namespace %v", err)
 	}
@@ -47,7 +48,7 @@ func setup(t *testing.T) *kubernetes.Clientset {
 
 func teardown(clientset *kubernetes.Clientset, t *testing.T) {
 	utils.DeleteDaemonsetIfExists(clientset)
-	err := clientset.CoreV1().Namespaces().Delete("k8s-image-puller", metav1.NewDeleteOptions(30))
+	err := clientset.CoreV1().Namespaces().Delete(context.TODO(), "k8s-image-puller", *metav1.NewDeleteOptions(30))
 	if err != nil {
 		t.Errorf("Could not delete namespace: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestSingleClusterCacheImages(t *testing.T) {
 
 	go func() {
 		for {
-			daemonsets, err := clientset.AppsV1().DaemonSets("k8s-image-puller").List(metav1.ListOptions{})
+			daemonsets, err := clientset.AppsV1().DaemonSets("k8s-image-puller").List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				t.Errorf("Error listing daemonsets: %v", err)
 			}

@@ -13,6 +13,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -54,9 +55,8 @@ var (
 // Set up watch on daemonset
 func watchDaemonset(clientset *kubernetes.Clientset) watch.Interface {
 	cfg := cfg.GetConfig()
-	watch, err := clientset.AppsV1().DaemonSets(cfg.Namespace).Watch(metav1.ListOptions{
-		FieldSelector:        fmt.Sprintf("metadata.name=%s", cfg.DaemonsetName),
-		IncludeUninitialized: true,
+	watch, err := clientset.AppsV1().DaemonSets(cfg.Namespace).Watch(context.TODO(), metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("metadata.name=%s", cfg.DaemonsetName),
 	})
 	if err != nil {
 		log.Fatalf("Failed to set up watch on daemonsets: %s", err.Error())
@@ -71,7 +71,7 @@ func getImagePullerDeployment(clientset *kubernetes.Clientset) *appsv1.Deploymen
 		log.Fatalf("DEPLOYMENT_NAME is not set for the image puller deployment")
 	}
 
-	deployment, err := clientset.AppsV1().Deployments(cfg.Namespace).Get(deploymentName, metav1.GetOptions{})
+	deployment, err := clientset.AppsV1().Deployments(cfg.Namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
 		log.Fatalf("Failed to get Deployment: %v", err)
 	}
@@ -149,7 +149,7 @@ func createDaemonset(clientset *kubernetes.Clientset) error {
 	defer dsWatch.Stop()
 	watchChan := dsWatch.ResultChan()
 
-	_, err := clientset.AppsV1().DaemonSets(cfg.Namespace).Create(toCreate)
+	_, err := clientset.AppsV1().DaemonSets(cfg.Namespace).Create(context.TODO(), toCreate, metav1.CreateOptions{})
 	if err != nil {
 		log.Fatalf("Failed to create daemonset: %s", err.Error())
 	} else {
@@ -193,9 +193,7 @@ func checkDaemonsetReadiness(clientset *kubernetes.Clientset) {
 	cfg := cfg.GetConfig()
 	// Loop 30 times, sleeping for 3 seconds each time -- 90 seconds total wait.
 	for i := 0; i < 30; i++ {
-		ds, err := clientset.AppsV1().DaemonSets(cfg.Namespace).Get(cfg.DaemonsetName, metav1.GetOptions{
-			// IncludeUninitialized: true,
-		})
+		ds, err := clientset.AppsV1().DaemonSets(cfg.Namespace).Get(context.TODO(), cfg.DaemonsetName, metav1.GetOptions{})
 		if err != nil {
 			log.Printf("WARN: could not get daemonset: %s", err)
 			return
@@ -224,7 +222,7 @@ func deleteDaemonset(clientset *kubernetes.Clientset) {
 	defer dsWatch.Stop()
 	watchChan := dsWatch.ResultChan()
 
-	err := clientset.AppsV1().DaemonSets(cfg.Namespace).Delete(cfg.DaemonsetName, &metav1.DeleteOptions{
+	err := clientset.AppsV1().DaemonSets(cfg.Namespace).Delete(context.TODO(), cfg.DaemonsetName, metav1.DeleteOptions{
 		PropagationPolicy: &propagationPolicy,
 	})
 	if err != nil {
